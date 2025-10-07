@@ -1,10 +1,10 @@
-### Projeto SIA-SUS: Extração e Processamento de Dados AM 2024
+# Projeto SIA-SUS: Extração e Processamento de Dados AM 2024
 
 Este projeto realiza a extração, concatenação e processamento de dados do grupo AM (APAC de Medicamentos) do SUS para o ano de 2024. O objetivo é demonstrar boas práticas de ETL, manipulação eficiente de grandes volumes de dados e refatoração de código para performance, utilizando o Polars para processamento em paralelo.
 
-## Estrutura  do  projeto
+### Estrutura  do  projeto
 
-sia-sus/
+```sia-sus/
 ├── extract/
 │   └── sia_extraction.py       # Extração de dados do SIA via PySUS
 ├── transform/
@@ -16,30 +16,29 @@ sia-sus/
 ├── main.py                     # Orquestração completa do fluxo (ETL)
 └── requirements.txt            # Dependências do projeto
 
+```
+##  Fluxo do trabalho
 
-## Fluxo do trabalho
-
-## 1- Extração de dados
+###  1- Extração de dados
 
 Baixa arquivos do grupo AM (APAC de Medicamentos) para todas as UFs do Brasil usando pysus. e salva  na  pasta data/raw/AM/2024/<UF>/
 
-# Como executar
+####  Como executar(Execução completa do ETL)
 
-# Execução completa do ETL
-python3 main.py
+`python3 main.py`
 
-# Este script orquestra os passos 1, 2 e 3 em sequência.
+(Este script orquestra os passos 1, 2 e 3 em sequência.)
 
-## 2 - Concatenação dos arquivos
+### 2 - Concatenação dos arquivos
 
 Lê todos os arquivos baixados anteriormente e concatena em um único arquivo parquet.
 Usei polars e lazyframe par facilitar performance. Salva o arquivo concatenado  na pasta data/processed.
 
-# Como executar
+#### Como executar
 
-python3 transform/process_data.py
+`python3 transform/process_data.py`
 
-## 3 - Refatoração e tratamento de dados
+### 3 - Refatoração e tratamento de dados
 
 Renomeia as colunas para  nomes mais simples, aplica tipo de dado correto(nos dados  brutos todas estão como tipo string). Salva o arquivo Parquet final usando compressão ZSTD afim de melhorar a performance de I/O. O arquivo final, com aproximadamente 35 milhões de linhas, está pronto para análises futuras e apresenta um tamanho reduzido de cerca de ~1.1 GB.
 
@@ -47,7 +46,7 @@ Renomeia as colunas para  nomes mais simples, aplica tipo de dado correto(nos da
 
 [Dicionário de Dados](https://github.com/carolinajacoby/sia-sus/blob/main/docs/Dicionario_Dados.md)
 
-## Mapeamento de Campos de Dados (Original vs. Descritivo)
+#### Mapeamento de Campos de Dados (Original vs. Descritivo)
 
 | Nome Original | Nome Atualizado/Descritivo |
 | :--- | :--- |
@@ -102,36 +101,35 @@ Renomeia as colunas para  nomes mais simples, aplica tipo de dado correto(nos da
 | **AM_QTDTRAN** | quantidade\_transplantes |
 | **AM_GESTANT** | gestante |
 
+### Como executar
 
-# Como executar
+`python3 transform/process_brazil.py`
 
-python3 transform/process_brazil.py
+## Instalação e  dependências
 
-============================================================
-
-### Instalação e  dependências
-
-## 1 - Ambiente virtual
+### 1 - Ambiente virtual
 
 Criar e ativar ambiente virtual do python
 
-# Como executar
+### Como executar
 
-python3 -m venv venv
-source venv/bin/activate  # Linux/macOS
-venv\Scripts\activate     # Windows
+`python3 -m venv venv`
+
+`source venv/bin/activate` # Linux/macOS
+
+`venv\Scripts\activate`     # Windows
 
 ### 2 - Instalar dependências
 
-pip install -r requirements.txt
+`pip install -r requirements.txt`
 
-## Principais dependências
+### Principais dependências
 
 [Python 3.12](https://www.python.org/downloads/)
 [Polars](https://www.pola.rs/)
 [PySus](https://pysus.readthedocs.io/)
 
-============================================================
+
 
 ---
 ## Licença
