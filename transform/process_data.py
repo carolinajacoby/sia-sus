@@ -1,53 +1,58 @@
 from pathlib import Path
-import pandas as pd
-import os 
+import polars as pl
+import time
 
-# Define o caminho raiz do projeto subindo um nível a partir da pasta 'transform'
-PROJETO_ROOT = Path(__file__).resolve().parent.parent 
-
-# Caminhos são definidos a partir desta raiz
-RAW_DIR = PROJETO_ROOT / "data/raw/AM/2024" 
-PROCESSED_DIR = PROJETO_ROOT / "data/processed" 
+# Caminhos principais
+PROJETO_ROOT = Path(__file__).resolve().parent.parent
+RAW_DIR = PROJETO_ROOT / "data/raw/AM/2024"  # onde estão os parquet baixados por UF
+PROCESSED_DIR = PROJETO_ROOT / "data/processed"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
-def main():
-    all_dfs = []
+OUTPUT_FILE = PROCESSED_DIR / "am_2024_consolidado_final.zstd.parquet"
 
-    print(f"DEBUG: Caminho Absoluto de Busca: {RAW_DIR.resolve()}")
-    print("\n--- INICIANDO LEITURA E UNIFICAÇÃO DOS ARQUIVOS PARQUET ---")
-    
-    # 1. BUSCA: Encontra todos os arquivos .parquet nas subpastas
-    arquivos_encontrados = list(RAW_DIR.rglob("*.parquet"))
-    
-    if not arquivos_encontrados:
-        print("ERRO: NENHUM arquivo .parquet encontrado. Verifique a pasta de download.")
+def main():
+    start_time = time.time()
+
+    # Lista todos os arquivos .parquet nas subpastas
+    parquet_files = list(RAW_DIR.rglob("*.parquet"))
+    if not parquet_files:
+        print(" Nenhum arquivo .parquet encontrado em:", RAW_DIR)
         return
 
-    # 2. LEITURA: Itera e lê cada arquivo Parquet
-    for i, parquet_file in enumerate(arquivos_encontrados):
-        try:
-            print(f"[{i+1}/{len(arquivos_encontrados)}] Lendo {parquet_file.name}...")
-            
-            df = pd.read_parquet(parquet_file) 
-            all_dfs.append(df)
-            
-            print(f"  -> {len(df):,} linhas lidas.")
-            
-        except Exception as e:
-            print(f"ERRO ao ler o arquivo Parquet {parquet_file.name}: {e}")
+    print(f"🔹 {len(parquet_files)} arquivos encontrados para concatenação.")
 
-    if all_dfs:
-        # 3. CONCATENAÇÃO E SALVAMENTO
-        print("\n--- CONCATENANDO E SALVANDO O ARQUIVO FINAL ---")
-        combined_df = pd.concat(all_dfs, ignore_index=True)
-        
-        output_file = PROCESSED_DIR / "am_2024_consolidado_final.parquet" 
-        
-        # O Parquet é ideal para esta etapa!
-        combined_df.to_parquet(output_file, index=False, engine='pyarrow') 
-        print(f"\nSUCESSO! Todos os {len(combined_df):,} registros unidos e salvos em: {output_file.resolve()}")
-    else:
-        print("Nenhum arquivo Parquet válido foi processado com sucesso.")
+    # Cria LazyFrames (sem carregar tudo na memória)
+    lazy_frames = []
+    for i, f in enumerate(parquet_files, 1):
+        try:
+            print(f"[{i}/{len(parquet_files)}] Adicionando {f.name} ao pipeline (lazy)...")
+            lazy_frames.append(pl.scan_parquet(f))
+        except Exception as e:
+            print(f"Erro ao ler {f.name}: {e}")
+
+    if not lazy_frames:
+        print(" Nenhum arquivo pôde ser carregado.")
+        return
+
+    # Concatenação preguiçosa
+    combined_lazy = pl.concat(lazy_frames, how="vertical")
+    print("Concatenação concluída (lazy). Salvando...")
+
+    # Salva comprimido em ZSTD
+    combined_lazy.sink_parquet(
+        OUTPUT_FILE,
+        compression="zstd",
+        compression_level=7
+    )
+
+    elapsed = (time.time() - start_time) / 60
+    size_gb = OUTPUT_FILE.stat().st_size / (1024 ** 3)
+
+    print(f"\n Arquivo consolidado salvo em: {OUTPUT_FILE}")
+    print(f" Total de arquivos processados: {len(parquet_files)}")
+    print(f" Tamanho final: {size_gb:.2f} GB")
+    print(f" Tempo total de execução: {elapsed:.2f} minutos")
+
 
 if __name__ == "__main__":
     main()
